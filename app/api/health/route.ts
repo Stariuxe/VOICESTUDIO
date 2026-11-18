@@ -1,0 +1,2 @@
+import { NextResponse } from 'next/server';
+export async function GET(){return NextResponse.json({status:'ok',app:'stariuxe-jarvis',version:'0.1.0',integrations:{supabase:!!process.env.NEXT_PUBLIC_SUPABASE_URL,ai:!!process.env.OPENAI_API_KEY},note:'Configuration presence only; external services are not tested.'});}
