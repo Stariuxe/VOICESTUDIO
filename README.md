@@ -1,6 +1,14 @@
-# JARVIS — Stariuxe Enterprises
+# JANE — Stariuxe Enterprises
 
-JARVIS is a responsive Next.js command-centre app for Windows 11 and Android. It includes Supabase email/password authentication, a protected AI chat endpoint, browser speech input where supported, female-voice preference for speech output, and PWA install metadata.
+JANE is a responsive Next.js personal assistant for phone and laptop. It uses Supabase Auth for owner sign-in and routes AI requests through Vercel AI Gateway.
+
+## Intelligent routing
+
+- Tier 1: deterministic replies for a small set of greetings and acknowledgements; no model call.
+- Tier 2: everyday questions routed to the configured quick model.
+- Tier 3: coding, research, strategy and multi-step work routed to the configured work model.
+
+The tier classifier is a lightweight heuristic, not a separate AI call. The route never executes external actions; consequential actions require separate authenticated tools and explicit approval.
 
 ## Development
 
@@ -13,24 +21,24 @@ npm run dev
 
 ## Vercel environment variables
 
-Configure these in the Vercel project settings for the environments you deploy:
-
+Required:
 - `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable/anon key only; never use a service-role key in browser code)
-- `OPENAI_API_KEY` (server-side secret; never prefix with `NEXT_PUBLIC_`)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable/anon key only)
+- `JARVIS_ALLOWED_EMAILS` (server-side allowlist of the owner account)
+- `AI_GATEWAY_API_KEY` (server-side secret), or Vercel OIDC configured for the deployment
 
-After changing environment variables, create a new deployment so the deployment receives the updated values.
+Optional:
+- `JANE_QUICK_MODEL` (default: `openai/gpt-4.1-mini`)
+- `JANE_WORK_MODEL` (default: `openai/gpt-5-mini`)
 
-## Security and integrations
+Never put secrets in browser code, Git, chat, or a `NEXT_PUBLIC_` variable. Do not add a Supabase service-role key to this application.
 
-The dashboard and chat endpoint require a signed-in Supabase user. The OpenAI key is used only by the server-side API route. The health endpoint reports whether required configuration is present; it does not prove that external services are reachable or that credentials are valid.
+After changing environment variables, redeploy so the deployment receives the updated values. AI Gateway usage may incur charges; monitor Gateway usage and budgets.
 
-External services such as GitHub, Vercel, Gmail, Stripe, PayPal, Canva, and PropertyOS AI must each be connected through their own OAuth/API authorisation and least-privilege permissions before JARVIS can access them. No autonomous money movement, publishing, account changes, or other consequential actions should run without explicit approval and an audit trail.
+## Security
+
+The chat endpoint validates the signed-in Supabase user and checks the server-side owner allowlist before any AI request. The AI Gateway credential stays server-side. Voice input is a convenience, not identity verification. No autonomous money movement, publishing, account changes, or device control is enabled by this router.
 
 ## Voice and installation
 
 Voice features depend on browser support and installed operating-system voices. On Windows 11, use Edge or Chrome's install-app control after HTTPS deployment. On Android, use Chrome menu > Install app / Add to Home screen.
-
-## Branches
-
-The `jarvis-preview` branch is for preview testing. Promote to the production branch only after authentication, AI chat, voice, and mobile checks pass.
