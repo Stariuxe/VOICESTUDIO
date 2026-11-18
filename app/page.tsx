@@ -1,10 +1,11 @@
 'use client';
 import {useEffect,useState} from 'react';
 import {Mic,MicOff,Send,Volume2,Sparkles,ShieldCheck,Activity,Bot,Plug} from 'lucide-react';
+import {createClient} from '@/lib/supabase/client';
 export default function Home(){
  const [messages,setMessages]=useState([{role:'assistant',text:"Hello. I’m JARVIS, your Stariuxe AI chief of staff. What would you like to work on?"}]); const [busy,setBusy]=useState(false);
  const [input,setInput]=useState(''); const [listening,setListening]=useState(false);
- useEffect(()=>{if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});},[]);
+ useEffect(()=>{if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});try{const supabase=createClient();supabase.auth.getSession().then(({data})=>{if(!data.session)window.location.href='/login';});}catch{window.location.href='/login';}},[]);
  function say(t:string){if(!('speechSynthesis'in window))return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='en-GB';u.pitch=1.12;const v=speechSynthesis.getVoices().find(x=>/female|zira|samantha|aria|jenny/i.test(x.name));if(v)u.voice=v;speechSynthesis.speak(u);}
  async function send(q=input){if(!q.trim()||busy)return;const next=[...messages,{role:'user',text:q}];setMessages(next);setInput('');setBusy(true);try{const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:next.map(m=>({role:m.role,content:m.text}))})});const data=await res.json();setMessages(m=>[...m,{role:'assistant',text:data.reply||data.error||'I could not complete that request.'}]);}catch{setMessages(m=>[...m,{role:'assistant',text:'I could not reach the JARVIS service. Please try again.'}]);}finally{setBusy(false);}}
  function listen(){const SR=(window as any).SpeechRecognition||(window as any).webkitSpeechRecognition;if(!SR){alert('Try Microsoft Edge or Chrome for speech recognition.');return;}const r=new SR();r.lang='en-GB';r.onresult=(e:any)=>send(e.results[0][0].transcript);r.onend=()=>setListening(false);r.start();setListening(true);}
