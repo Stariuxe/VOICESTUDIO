@@ -13,3 +13,6 @@ This is a UI prototype, not a connected autonomous agent. External integrations 
 
 ## Install
 After HTTPS deployment, use Edge/Chrome install-app controls on Windows 11; on Android use Chrome menu > Install app / Add to Home screen.
+
+## Preview branch
+The `jarvis-preview` branch is used for preview testing before any production release.
