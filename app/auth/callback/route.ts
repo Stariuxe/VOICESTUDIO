@@ -25,8 +25,8 @@ export async function GET(request: Request) {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     authError = error;
-  } else if (tokenHash && type === 'email') {
-    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'email' });
+  } else if (tokenHash && (type === 'email' || type === 'magiclink')) {
+    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: type as 'email' | 'magiclink' });
     authError = error;
   } else {
     authError = new Error('Missing sign-in confirmation.');
