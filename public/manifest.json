@@ -1,9 +1,26 @@
 {
-  "name": "JENA — Stariuxe",
+  "id": "/",
+  "name": "JENA — Stariuxe Enterprises",
   "short_name": "JENA",
+  "description": "Your personal AI command centre from Stariuxe Enterprises.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#080d18",
   "theme_color": "#080d18",
-  "icons": []
+  "icons": [
+    {
+      "src": "/jena-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/jena-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
 }
