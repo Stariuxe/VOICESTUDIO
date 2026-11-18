@@ -8,6 +8,7 @@ export async function POST(req:Request){
  const cookieStore=await cookies();
  const supabase=createServerClient(url,anon,{cookies:{getAll(){return cookieStore.getAll();},setAll(cookiesToSet){try{cookiesToSet.forEach(({name,value,options})=>cookieStore.set(name,value,options));}catch{}}}});
  const {data:{user}}=await supabase.auth.getUser(); if(!user)return NextResponse.json({error:'Please sign in to JARVIS first.'},{status:401});
+ const allowed=(process.env.JARVIS_ALLOWED_EMAILS||'').split(',').map(v=>v.trim().toLowerCase()).filter(Boolean); if(!allowed.length||!user.email||!allowed.includes(user.email.toLowerCase()))return NextResponse.json({error:'This JARVIS account is not authorised.'},{status:403});
  const key=process.env.OPENAI_API_KEY; if(!key)return NextResponse.json({error:'AI engine is not configured. Add OPENAI_API_KEY to the Vercel project environment.'},{status:503});
  let body:any;try{body=await req.json();}catch{return NextResponse.json({error:'Invalid request.'},{status:400});}
  const messages=Array.isArray(body.messages)?body.messages.slice(-12):[];
