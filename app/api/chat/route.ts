@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { getVercelOidcToken } from '@vercel/oidc';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -16,13 +17,13 @@ function classifyTier(text: string): 1 | 2 | 3 {
 
 function instantReply(text: string): string | null {
   const value = text.trim().toLowerCase().replace(/[!.?]+$/, '');
-  if (/^(hi|hello|hey)$/.test(value)) return "Hello. I'm JANE. I'm here and ready to help. What would you like to work on?";
-  if (/^good morning$/.test(value)) return "Good morning. I'm ready when you are. What should we focus on today?";
-  if (/^good afternoon$/.test(value)) return "Good afternoon. I'm ready to help. What's on your mind?";
-  if (/^good evening$/.test(value)) return "Good evening. I'm here to help. What would you like to do?";
-  if (/^(thanks|thank you|thx)$/.test(value)) return "You're welcome. What would you like to tackle next?";
-  if (/^(bye|goodbye)$/.test(value)) return "Goodbye for now. I'll be here when you need me.";
-  if (/^who are you$/.test(value) || /^what is your name$/.test(value)) return "I'm JANE, your personal AI assistant.";
+  if (/^(hi|hello|hey)$/.test(value)) return "Hello. I'm JARVIS. I'm here and ready to help.";
+  if (/^good morning$/.test(value)) return "Good morning. I'm ready when you are.";
+  if (/^good afternoon$/.test(value)) return "Good afternoon. What shall we work on?";
+  if (/^good evening$/.test(value)) return "Good evening. I'm ready to assist.";
+  if (/^(thanks|thank you|thx)$/.test(value)) return "You're welcome.";
+  if (/^(bye|goodbye)$/.test(value)) return "Goodbye. I'll be here when you need me.";
+  if (/^who are you$/.test(value) || /^what is your name$/.test(value)) return "I'm JARVIS, your personal AI assistant.";
   return null;
 }
 
@@ -35,68 +36,42 @@ export async function POST(req: Request) {
   const supabase = createServerClient(url, anon, {
     cookies: {
       getAll() { return cookieStore.getAll(); },
-      setAll(values) {
-        try { values.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); } catch {}
-      },
+      setAll(values) { try { values.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); } catch {} },
     },
   });
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Please sign in first.' }, { status: 401 });
 
-  const allowed = (process.env.JARVIS_ALLOWED_EMAILS || '')
-    .split(',').map(value => value.trim().toLowerCase()).filter(Boolean);
+  const allowed = (process.env.JARVIS_ALLOWED_EMAILS || '').split(',').map(value => value.trim().toLowerCase()).filter(Boolean);
   if (!allowed.length || !user.email || !allowed.includes(user.email.toLowerCase())) {
     return NextResponse.json({ error: 'This account is not authorised.' }, { status: 403 });
   }
 
   let body: { messages?: ChatMessage[] };
-  try { body = await req.json(); } catch {
-    return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
-  }
-
+  try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid request.' }, { status: 400 }); }
   const messages = Array.isArray(body.messages) ? body.messages.slice(-12) : [];
-  if (!messages.length || messages.some(message =>
-    !message || !['user', 'assistant'].includes(message.role) ||
-    typeof message.content !== 'string' || message.content.length > 4000
-  )) {
+  if (!messages.length || messages.some(message => !message || !['user', 'assistant'].includes(message.role) || typeof message.content !== 'string' || message.content.length > 4000)) {
     return NextResponse.json({ error: 'Provide up to 12 valid conversation messages.' }, { status: 400 });
   }
-
   const latestUserMessage = [...messages].reverse().find(message => message.role === 'user');
   if (!latestUserMessage) return NextResponse.json({ error: 'A user message is required.' }, { status: 400 });
 
   const tier = classifyTier(latestUserMessage.content);
   if (tier === 1) {
     const reply = instantReply(latestUserMessage.content);
-    if (reply) return NextResponse.json({ reply, tier, routedTo: 'instant' });
+    if (reply) return new Response('data: ' + JSON.stringify({ type: 'response.output_text.delta', delta: reply }) + '\n\n' + 'data: [DONE]\n\n', {
+      headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'X-Accel-Buffering': 'no' },
+    });
   }
 
-  // Prefer an explicitly configured AI Gateway API key. Otherwise, obtain
-  // the current Vercel OIDC token for this function invocation. Vercel
-  // rotates OIDC tokens, so never cache them at module scope.
   let gatewayKey = process.env.AI_GATEWAY_API_KEY;
-  if (!gatewayKey) {
-    try {
-      gatewayKey = await getVercelOidcToken();
-    } catch {
-      gatewayKey = undefined;
-    }
-  }
-  if (!gatewayKey) {
-    return NextResponse.json({
-      error: 'JANE is securely signed in, but the AI Gateway credential is not configured yet.',
-      tier,
-      setupRequired: 'Add AI_GATEWAY_API_KEY to the Vercel project environment, or enable Vercel OIDC for this project.',
-    }, { status: 503 });
-  }
+  if (!gatewayKey) { try { gatewayKey = await getVercelOidcToken(); } catch { gatewayKey = undefined; } }
+  if (!gatewayKey) return NextResponse.json({ error: 'AI Gateway credential is not configured yet.' }, { status: 503 });
 
-  const model = tier === 3
-    ? (process.env.JANE_WORK_MODEL || 'openai/gpt-5-mini')
-    : (process.env.JANE_QUICK_MODEL || 'openai/gpt-4.1-mini');
-
+  const model = tier === 3 ? (process.env.JANE_WORK_MODEL || 'openai/gpt-5-mini') : (process.env.JANE_QUICK_MODEL || 'openai/gpt-4.1-mini');
   const instructions = [
-    "You are JANE, the user's personal AI assistant.",
+    "You are JARVIS, the user's personal AI assistant for Stariuxe Enterprises.",
     'Help with everyday questions, planning, research, coding and business work.',
     'Use concise, clear language and adapt to the complexity of the request.',
     'Never claim you accessed accounts, changed data, sent messages, moved money, deployed code, called anyone or executed an action unless a verified tool result proves it.',
@@ -109,43 +84,37 @@ export async function POST(req: Request) {
   try {
     response = await fetch('https://ai-gateway.vercel.sh/v1/responses', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${gatewayKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { Authorization: 'Bearer ' + gatewayKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model,
-        instructions,
+        model, instructions,
         input: messages.map(message => ({ role: message.role, content: message.content })),
         max_output_tokens: tier === 3 ? 2400 : 900,
         store: false,
+        stream: true,
       }),
       signal: AbortSignal.timeout(45000),
     });
   } catch {
-    return NextResponse.json({ error: 'JANE could not reach the AI Gateway. Please try again.' }, { status: 502 });
+    return NextResponse.json({ error: 'JARVIS could not reach the AI Gateway. Please try again.' }, { status: 502 });
   }
 
-  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const status = response.status === 429 ? 429 : 502;
+    const data = await response.json().catch(() => ({}));
     return NextResponse.json({
-      error: response.status === 402
-        ? 'AI Gateway billing or usage limits need attention.'
-        : response.status === 401
-          ? 'AI Gateway authentication failed. Check the server-side credential.'
-          : 'The AI Gateway could not complete the request.',
-      tier,
-      gatewayStatus: response.status,
-    }, { status });
+      error: response.status === 402 ? 'AI Gateway billing or usage limits need attention.' :
+        response.status === 401 ? 'AI Gateway authentication failed. Check the server-side credential.' :
+        'The AI Gateway could not complete the request.',
+      tier, gatewayStatus: response.status,
+    }, { status: response.status === 429 ? 429 : 502 });
   }
+  if (!response.body) return NextResponse.json({ error: 'The AI Gateway returned no response stream.' }, { status: 502 });
 
-  const reply = (data.output || [])
-    .flatMap((item: { content?: Array<{ type?: string; text?: string }> }) => item.content || [])
-    .filter((item: { type?: string }) => item.type === 'output_text')
-    .map((item: { text?: string }) => item.text || '')
-    .join('\n');
-
-  if (!reply) return NextResponse.json({ error: 'JANE received an empty response. Please try again.', tier }, { status: 502 });
-  return NextResponse.json({ reply, tier, routedTo: model });
+  return new Response(response.body, {
+    headers: {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    },
+  });
 }
