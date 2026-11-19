@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
+import { getVercelOidcToken } from '@vercel/oidc';
 
 export const runtime = 'nodejs';
 
@@ -71,7 +72,17 @@ export async function POST(req: Request) {
     if (reply) return NextResponse.json({ reply, tier, routedTo: 'instant' });
   }
 
-  const gatewayKey = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN;
+  // Prefer an explicitly configured AI Gateway API key. Otherwise, obtain
+  // the current Vercel OIDC token for this function invocation. Vercel
+  // rotates OIDC tokens, so never cache them at module scope.
+  let gatewayKey = process.env.AI_GATEWAY_API_KEY;
+  if (!gatewayKey) {
+    try {
+      gatewayKey = await getVercelOidcToken();
+    } catch {
+      gatewayKey = undefined;
+    }
+  }
   if (!gatewayKey) {
     return NextResponse.json({
       error: 'JANE is securely signed in, but the AI Gateway credential is not configured yet.',
