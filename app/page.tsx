@@ -16,7 +16,7 @@ export default function Home(){
   setMessages(next);setInput('');setBusy(true);setLatency(null);
   const controller=new AbortController();abortRef.current=controller;
   try{
-   const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:next.slice(0,-1).map(m=>({role:m.role,content:m.text})).concat([{role:'user',content:q}])}),signal:controller.signal});
+   const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:next.slice(0,-1).map(m=>({role:m.role,content:m.text}))}),signal:controller.signal});
    if(!res.ok){const data=await res.json().catch(()=>({}));throw new Error(data.error||'The assistant could not complete that request.');}
    if(!res.body)throw new Error('Streaming is unavailable in this browser.');
    const reader=res.body.getReader(),decoder=new TextDecoder();let buffer='',reply='';
